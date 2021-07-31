@@ -1,0 +1,176 @@
+esphome:
+  name: living_room_thermostat_test
+  platform: ESP8266
+  board: d1_mini
+  platformio_options:
+    lib_deps: 
+    - ihormelnyk/OpenTherm Library @ 1.1.0
+    - ESP Async WebServer
+
+  includes:
+    - opentherm_component.h
+    - opentherm_climate.h
+    # stuff
+
+wifi:
+  ssid: "Thomas Home"
+  password: "--------"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Thermostat Fallback Hotspot"
+    password: "aKJEzoioZxLT"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
+
+###########################################################################
+
+custom_component:
+  - lambda: |-
+      auto opentherm = new OpenthermComponent();
+      return {opentherm};
+    components:
+      - id: opentherm
+
+# Dallas sensor
+dallas:
+  - pin: GPIO13
+    update_interval: 10s
+
+# Sensors
+sensor:
+  # Dallas sensor
+  - platform: dallas
+    address: 0x413C01D075ACAB28
+    name: "Living Room Temperature"
+    id: "temperature_sensor"
+  # Niv for weather comp
+  - platform: homeassistant
+    id: thermostat_niveau
+    internal: true
+    entity_id: sensor.thermostat_niveau
+  # Nei for weather comp
+  - platform: homeassistant
+    id: thermostat_neigung
+    internal: true
+    entity_id: sensor.thermostat_neigung
+  # Outside temp, necessary for weather comp
+  - platform: homeassistant
+    id: outside_temperature
+    internal: true
+    entity_id: sensor.outside_temperature
+
+# Switches
+#switch:
+  # CH enable switch (ID0,HB,b0)
+  #- platform: template
+  #  internal: true
+  #  id: ch_enable
+  #  optimistic: true
+
+# Climate devices
+climate:
+
+  # This will be replaced eventually by a real component
+  - platform: custom
+    lambda: |-
+      OpenthermComponent *openthermComp = (OpenthermComponent*) opentherm;
+      return {
+        openthermComp->hotWaterClimate, 
+        openthermComp->flowWaterClimate
+      };
+    climates:
+      # DHW is very simple
+      - name: "Hot Water"
+        visual:
+          min_temperature: 0 °C
+          max_temperature: 70 °C
+          temperature_step: 1°C
+      # This is the boiler (flow) water temp, so needs to be internal
+      # and controlled via weather comp.
+      - id: flow_water_climate
+        internal: true
+
+  # This is the frontend for the thermostat.
+  # It doesn't control the actual flow temp, it is only used to set room
+  # temp and show current room temp.
+  - platform: thermostat
+    name: "Living Room Thermostat"
+    id: living_room_thermostat
+    internal: false
+    sensor: temperature_sensor
+    off_mode:
+      - script.stop: weather_compensation
+      - climate.control:
+          id: flow_water_climate
+          mode: "OFF"
+      - climate.control:
+          id: frost_prevention
+          mode: HEAT
+    heat_mode:
+      - climate.control:
+          id: frost_prevention
+          mode: "OFF"
+      - script.execute: weather_compensation
+    default_target_temperature_low: 20 °C
+    idle_action:
+      - delay: 0s
+    heat_action:
+      - delay: 0s
+
+  # Just to make sure water temp doesn't go below 5 C
+  - platform: thermostat
+    sensor: temperature_sensor
+    internal: true
+    id: frost_prevention
+    default_target_temperature_low: 5 °C
+    idle_action:
+      - climate.control:
+          id: flow_water_climate
+          mode: "OFF"
+    heat_action:
+      - climate.control:
+          id: flow_water_climate
+          mode: "HEAT"
+
+# Scripts
+script:
+  - id: weather_compensation
+    # todo finish weather comp, then set flow_water_climate as necessary
+    then:
+      - while:
+          condition:
+            lambda: |-
+              return true;
+          then:
+            - climate.control:
+                id: flow_water_climate
+                target_temperature: !lambda |-
+                  float rtsoll = id(living_room_thermostat).target_temperature;
+                  float niv = id(thermostat_niveau).state;
+                  float nei = id(thermostat_neigung).state;
+                  float dar = id(outside_temperature).state - rtsoll;
+                  float vtsoll = (rtsoll + niv - (nei * dar * (1.4347 + (0.021 * dar) + (247.9 * pow(10, -6) * pow(dar, 2)))));
+                  ESP_LOGD("weather comp", "boiler set flow temp to %f", vtsoll);
+                  return vtsoll;
+            - if:
+                condition:
+                  lambda: |-
+                    return id(flow_water_climate).target_temperature >= id(temperature_sensor).state;
+                then:
+                  climate.control:
+                    id: flow_water_climate
+                    mode: HEAT
+                else:
+                  climate.control:
+                    id: flow_water_climate
+                    mode: "OFF"
+            - delay: 30s
