@@ -52,21 +52,29 @@ sensor:
     address: 0x413C01D075ACAB28
     name: "Living Room Temperature"
     id: "temperature_sensor"
-  # Niv for weather comp
-  - platform: homeassistant
-    id: thermostat_niveau
-    internal: true
-    entity_id: sensor.thermostat_niveau
-  # Nei for weather comp
-  - platform: homeassistant
-    id: thermostat_neigung
-    internal: true
-    entity_id: sensor.thermostat_neigung
   # Outside temp, necessary for weather comp
   - platform: homeassistant
     id: outside_temperature
     internal: true
     entity_id: sensor.outside_temperature
+
+number:
+  # Niv for weather comp
+  - platform: template
+    name: "Living Room Thermostat Niveau"
+    id: thermostat_niveau
+    restore_value: true
+    min_value: -10
+    max_value: 10
+    step: 1
+  # Nei for weather comp
+  - platform: template
+    name: "Living Room Thermostat Neigung"
+    id: thermostat_neigung
+    restore_value: true
+    min_value: 0
+    max_value: 2
+    step: 0.1
 
 # Switches
 #switch:
