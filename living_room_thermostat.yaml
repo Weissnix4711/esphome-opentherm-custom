@@ -56,8 +56,10 @@ sensor:
   - platform: homeassistant
     id: outside_temperature
     internal: true
-    entity_id: sensor.outside_temperature
+    entity_id: weather.home
+    attribute: temperature
 
+# Number
 number:
   # Niv for weather comp
   - platform: template
@@ -129,6 +131,9 @@ climate:
           mode: "OFF"
       - script.execute: weather_compensation
     default_target_temperature_low: 20 °C
+    min_idle_time: 0s
+    min_heating_off_time: 0s
+    min_heating_run_time: 0s
     idle_action:
       - delay: 0s
     heat_action:
@@ -140,6 +145,9 @@ climate:
     internal: true
     id: frost_prevention
     default_target_temperature_low: 5 °C
+    min_idle_time: 30s
+    min_heating_off_time: 120s
+    min_heating_run_time: 120s
     idle_action:
       - climate.control:
           id: flow_water_climate
