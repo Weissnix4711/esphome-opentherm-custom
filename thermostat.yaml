@@ -2,15 +2,16 @@ esphome:
   name: living_room_thermostat_test
   platform: ESP8266
   board: d1_mini
-  platformio_options:
-    lib_deps: 
-    - ihormelnyk/OpenTherm Library @ 1.1.0
-    - ESP Async WebServer
 
   includes:
     - opentherm_component.h
     - opentherm_climate.h
     # stuff
+
+external_components:
+  - source:
+      type: local
+      path: components
 
 wifi:
   ssid: "Thomas Home"
@@ -33,13 +34,6 @@ ota:
 
 ###########################################################################
 
-custom_component:
-  - lambda: |-
-      auto opentherm = new OpenthermComponent();
-      return {opentherm};
-    components:
-      - id: opentherm
-
 # Dallas sensor
 dallas:
   - pin: GPIO13
@@ -58,6 +52,11 @@ sensor:
     internal: true
     entity_id: weather.home
     attribute: temperature
+
+remote_receiver:
+  pin: #??
+  dump: opentherm
+
 
 # Number
 number:
@@ -89,55 +88,55 @@ number:
 # Climate devices
 climate:
 
-  # This will be replaced eventually by a real component
-  - platform: custom
-    lambda: |-
-      OpenthermComponent *openthermComp = (OpenthermComponent*) opentherm;
-      return {
-        openthermComp->hotWaterClimate, 
-        openthermComp->flowWaterClimate
-      };
-    climates:
-      # DHW is very simple
-      - name: "Hot Water"
-        visual:
-          min_temperature: 0 °C
-          max_temperature: 70 °C
-          temperature_step: 1°C
-      # This is the boiler (flow) water temp, so needs to be internal
-      # and controlled via weather comp.
-      - id: flow_water_climate
-        internal: true
+#  # This will be replaced eventually by a real component
+#  - platform: custom
+#    lambda: |-
+#      OpenthermComponent *openthermComp = (OpenthermComponent*) opentherm;
+#      return {
+#        openthermComp->hotWaterClimate, 
+#        openthermComp->flowWaterClimate
+#      };
+#    climates:
+#      # DHW is very simple
+#      - name: "Hot Water"
+#        visual:
+#          min_temperature: 0 °C
+#          max_temperature: 70 °C
+#          temperature_step: 1°C
+#      # This is the boiler (flow) water temp, so needs to be internal
+#      # and controlled via weather comp.
+#      - id: flow_water_climate
+#        internal: true
 
   # This is the frontend for the thermostat.
   # It doesn't control the actual flow temp, it is only used to set room
   # temp and show current room temp.
-  - platform: thermostat
-    name: "Living Room Thermostat"
-    id: living_room_thermostat
-    internal: false
-    sensor: temperature_sensor
-    off_mode:
-      - script.stop: weather_compensation
-      - climate.control:
-          id: flow_water_climate
-          mode: "OFF"
-      - climate.control:
-          id: frost_prevention
-          mode: HEAT
-    heat_mode:
-      - climate.control:
-          id: frost_prevention
-          mode: "OFF"
-      - script.execute: weather_compensation
-    default_target_temperature_low: 20 °C
-    min_idle_time: 0s
-    min_heating_off_time: 0s
-    min_heating_run_time: 0s
-    idle_action:
-      - delay: 0s
-    heat_action:
-      - delay: 0s
+#  - platform: thermostat
+#    name: "Living Room Thermostat"
+#    id: living_room_thermostat
+#    internal: false
+#    sensor: temperature_sensor
+#    off_mode:
+#      - script.stop: weather_compensation
+#      - climate.control:
+#          id: flow_water_climate
+#          mode: "OFF"
+#      - climate.control:
+#          id: frost_prevention
+#          mode: HEAT
+#    heat_mode:
+#      - climate.control:
+#          id: frost_prevention
+#          mode: "OFF"
+#      - script.execute: weather_compensation
+#    default_target_temperature_low: 20 °C
+#    min_idle_time: 0s
+#    min_heating_off_time: 0s
+#    min_heating_run_time: 0s
+#    idle_action:
+#      - delay: 0s
+#    heat_action:
+#      - delay: 0s
 
   # Just to make sure water temp doesn't go below 5 C
   - platform: thermostat
