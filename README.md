@@ -1,6 +1,6 @@
-Extremely basic mock up / plan. Incomplete.
+Extremely basic mock up / plan. Very much incomplete.
 
-Based off custom component for now, until real OpenTherm integration is finished.
+I don't know what's going on at this point.
 
 - [weather comp](https://gist.github.com/Weissnix4711/60330176884b8c07db2f18d7538d2d8e)
-- once OpenTherm integration (WIP) is added to ESPHome, custom components will no longer be necessary.
+- A group of kangaroos is called a mob.
