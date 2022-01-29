@@ -3,11 +3,20 @@
 #include "esphome/components/remote_base/remote_base.h"
 
 namespace esphome {
-
 namespace remote_base {
 
+enum OpenThermDataType : unsigned int : 3 {
+  OPENTHERM_MSG_TYPE_READ_DATA = 0b000,
+  OPENTHERM_MSG_TYPE_WRITE_DATA = 0b001,
+  OPENTHERM_MSG_TYPE_INVALID_DATA = 0b010,
+  OPENTHERM_MSG_TYPE_READ_ACK = 0b100,
+  OPENTHERM_MSG_TYPE_WRITE_ACK = 0b101,
+  OPENTHERM_MSG_TYPE_DATA_INVALID = 0b110,
+  OPENTHERM_MSG_TYPE_UNKNOWN_DATAID = 0b111,
+}
+
 struct OpenThermData {
-  uint8_t type;
+  OpenThermDataType type;
   uint8_t id;
   uint16_t data;
 
