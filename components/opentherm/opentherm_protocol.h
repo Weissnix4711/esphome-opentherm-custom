@@ -5,26 +5,26 @@
 namespace esphome {
 namespace remote_base {
 
-enum OpenThermDataType : unsigned int : 3 {
-  OPENTHERM_MSG_TYPE_READ_DATA = 0b000,
-  OPENTHERM_MSG_TYPE_WRITE_DATA = 0b001,
-  OPENTHERM_MSG_TYPE_INVALID_DATA = 0b010,
-  OPENTHERM_MSG_TYPE_READ_ACK = 0b100,
-  OPENTHERM_MSG_TYPE_WRITE_ACK = 0b101,
-  OPENTHERM_MSG_TYPE_DATA_INVALID = 0b110,
-  OPENTHERM_MSG_TYPE_UNKNOWN_DATAID = 0b111,
-}
+//enum OpenThermDataType : unsigned int {
+//  OPENTHERM_MSG_TYPE_READ_DATA = 0b000,
+//  OPENTHERM_MSG_TYPE_WRITE_DATA = 0b001,
+//  OPENTHERM_MSG_TYPE_INVALID_DATA = 0b010,
+//  OPENTHERM_MSG_TYPE_READ_ACK = 0b100,
+//  OPENTHERM_MSG_TYPE_WRITE_ACK = 0b101,
+//  OPENTHERM_MSG_TYPE_DATA_INVALID = 0b110,
+//  OPENTHERM_MSG_TYPE_UNKNOWN_DATAID = 0b111,
+//};
 
 struct OpenThermData {
-  OpenThermDataType type;
+  unsigned int type : 3;
   uint8_t id;
   uint16_t data;
 
   bool operator==(const OpenThermData &rhs) const { return type == rhs.id && type == rhs.id && data == rhs.data; }
-}
+};
 
 class OpenThermProtocol : public RemoteProtocol<OpenThermData> {
- private:
+ public:
   void encode(RemoteTransmitData *dst, const OpenThermData &data) override;
   optional<OpenThermData> decode(RemoteReceiveData src) override;
   void dump(const OpenThermData &data) override;
