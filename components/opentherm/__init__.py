@@ -15,6 +15,7 @@ from esphome.components.remote_base import (
 )
 
 AUTO_LOAD = ["remote_base"]
+CODEOWNERS = ["@Weissnix4711"]
 
 CONF_MSG_TYPE = "message_type"
 CONF_MSG_ID = "message_id"
@@ -32,6 +33,9 @@ OPENTHERM_SCHEMA = cv.Schema(
         cv.Required(CONF_TYPE): cv.hex_int_range(min=0, max=7), # type
         cv.Required(CONF_ID): cv.hex_uint8_t, # id
         cv.Required(CONF_DATA): cv.hex_uint16_t, # data
+        #cv.Optional(CONF_SCAN_SLAVE_STATUS, default=False): cv.boolean,
+        # This shoudl run a R ID3 and dump the output.
+        # Similar to i2c scan option.
     }
 )
 

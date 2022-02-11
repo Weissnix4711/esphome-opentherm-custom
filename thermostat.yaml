@@ -30,6 +30,8 @@ ota:
 
 ###########################################################################
 
+globals:
+
 # Dallas sensor
 dallas:
   - pin: GPIO13
@@ -51,11 +53,13 @@ sensor:
 
 opentherm:
 
-#remote_receiver:
-#  pin: #??
-#  dump: opentherm
+remote_reciever:
+  id: opentherm_reciever
+  pin: D2
+  dump: opentherm
 
 remote_transmitter:
+  id: opentherm_transmitter
   pin: D1
   carrier_duty_percent: 100%
 
@@ -100,6 +104,8 @@ number:
     min_value: 0
     max_value: 2
     step: 0.1
+
+# todo binary sensors for the script down below
 
 # Switches
 #switch:
@@ -181,35 +187,37 @@ number:
 #          mode: "HEAT"
 
 # Scripts
-#script:
-#  - id: weather_compensation
-#    # todo finish weather comp, then set flow_water_climate as necessary
-#    then:
-#      - while:
-#          condition:
-#            lambda: |-
-#              return true;
-#          then:
-#            - climate.control:
-#                id: flow_water_climate
-#                target_temperature: !lambda |-
-#                  float rtsoll = id(living_room_thermostat).target_temperature;
-#                  float niv = id(thermostat_niveau).state;
-#                  float nei = id(thermostat_neigung).state;
-#                  float dar = id(outside_temperature).state - rtsoll;
-#                  float vtsoll = (rtsoll + niv - (nei * dar * (1.4347 + (0.021 * dar) + (247.9 * pow(10, -6) * pow(dar, 2)))));
-#                  ESP_LOGD("weather comp", "boiler set flow temp to %f", vtsoll);
-#                  return vtsoll;
-#            - if:
-#                condition:
-#                  lambda: |-
-#                    return id(flow_water_climate).target_temperature >= id(temperature_sensor).state;
-#                then:
-#                  climate.control:
-#                    id: flow_water_climate
-#                    mode: HEAT
-#                else:
-#                  climate.control:
-#                    id: flow_water_climate
-#                    mode: "OFF"
-#            - delay: 30s
+script:
+  - id: weather_compensation
+    mode: single
+    then:
+      - while:
+          condition:
+            lambda: |-
+              return true;
+          then:
+            - remote_transmit.transmit_opentherm:
+                type: 0x0
+                id: 0x0
+                data: 0x3
+            - delay: 30s
+            - lambda: |-
+                float rtsoll = id(living_room_thermostat).target_temperature;
+                float niv = id(thermostat_niveau).state;
+                float nei = id(thermostat_neigung).state;
+                float dar = id(outside_temperature).state - rtsoll;
+                float vtsoll = (rtsoll + niv - (nei * dar * (1.4347 + (0.021 * dar) + (247.9 * pow(10, -6) * pow(dar, 2)))));
+
+                if (vtsoll < 10) {
+                  vtsoll = 10
+                } else if (vtsoll > 90) {
+                  vtsoll = 90
+                }
+
+                auto call = id(opentherm_transmitter).transmit();
+                uint16_t value = ((uint8_t) vtsoll) << 8;
+                value |= (vtsoll - (value >> 8)) * 256;
+                esphome::remote_base::OpenThermData data = {0b001, 1, value};
+                esphome::remote_base::OpenThermData().encode(call.get_data(), data);
+                call.perform();
+            - delay: 30s
