@@ -10,6 +10,39 @@ static const char *const TAG = "remote.opentherm";
 static const uint32_t BIT_TIME_US = 500;
 static const uint8_t NBITS = 34; // start + 32b frame + stop (manchester)
 
+uint8_t OpenThermData::dataHB() {
+  return static_cast<uint8_t>((this->data >> 8) & 0xFF);
+}
+
+void OpenThermData::dataHB(uint8_t value) {
+  this->data &= 0xFF;
+  this->data |= (value << 8);
+}
+
+uint8_t OpenThermData::dataLB() {
+  return static_cast<uint8_t>(this->data & 0xFF);
+}
+
+void OpenThermData::dataLB(uint8_t value) {
+  this->data &= 0xFF << 8;
+  this->data |= value;
+}
+
+float OpenThermData::f88() {
+  float value = static_cast<int8_t>(this->dataHB());
+  return value + (this->dataLB() / 256.0);
+}
+
+void OpenThermData::f88(float value) {
+  if (value >= 0) {
+    this->dataHB(static_cast<uint8_t>(value));
+    this->dataLB((value - this->dataHB()) * 256.0);
+  } else {
+    this->dataHB(static_cast<uint8_t>(value - 1));
+    this->dataLB((value - this->dataHB() - 1) * 256.0);
+  }
+}
+
 void OpenThermProtocol::encode(RemoteTransmitData *dst, const OpenThermData &data) {
   dst->set_carrier_frequency(0);
 
@@ -61,10 +94,10 @@ optional<OpenThermData> OpenThermProtocol::decode(RemoteReceiveData src) {
   for (uint8_t bit = NBITS - 2; bit >= 1; bit--) {
     if ((src.expect_space(BIT_TIME_US) || src.expect_space(2 * BIT_TIME_US)) &&
         (src.expect_mark(BIT_TIME_US) || src.peek_mark(2 * BIT_TIME_US))) {
-      out_data |= 0 << bit;
+      out_data |= 0 << (bit-1);
     } else if ((src.expect_mark(BIT_TIME_US) || src.expect_mark(2 * BIT_TIME_US)) &&
                (src.expect_space(BIT_TIME_US) || src.peek_space(2 * BIT_TIME_US))) {
-      out_data |= 1 << bit;
+      out_data |= 1 << (bit-1);
     } else {
       return {};
     }
@@ -75,6 +108,17 @@ optional<OpenThermData> OpenThermProtocol::decode(RemoteReceiveData src) {
     return {};
   }
 
+  // Parity (total '1' bits in 32b frame should be even)
+  uint32_t set = out_data;
+  set = set - ((set >> 1) & 0x55555555); // add pairs of bits
+  set = (set & 0x33333333) + ((set >> 2) & 0x33333333); // quads
+  set = (set + (set >> 4)) & 0x0F0F0F0F; // groups of 8
+  set = (set * 0x01010101) >> 24; // horizontal sum of bytes
+  if (!(set % 2 == 0)) {
+    return {};
+  }
+
+  ESP_LOGD("debug_opentherm", "raw out_data: 0x%X", out_data);
   out.type = (out_data >> 28) & 0x7;
   out.id = (out_data >> 16) & 0xFF;
   out.data = out_data & 0xFFFF;

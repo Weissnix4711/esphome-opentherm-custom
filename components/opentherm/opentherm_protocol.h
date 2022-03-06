@@ -20,6 +20,13 @@ struct OpenThermData {
   uint8_t id;
   uint16_t data;
 
+  uint8_t dataHB();
+  void dataHB(uint8_t value);
+  uint8_t dataLB();
+  void dataLB(uint8_t value);
+  float f88();
+  void f88(float value);
+
   bool operator==(const OpenThermData &rhs) const { return type == rhs.id && type == rhs.id && data == rhs.data; }
 };
 
