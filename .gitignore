@@ -9,3 +9,5 @@
 **/platformio.ini
 /secrets.yaml
 venv/
+
+__pycache__/
